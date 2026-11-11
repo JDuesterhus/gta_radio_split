@@ -1,0 +1,21 @@
+build/
+*.obj
+*.lib
+*.exp
+*.ilk
+*.pdb
+*.log
+RadioSplit.asi
+RadioSplit.exe
+
+# Game executables and audio do not belong in this repo.
+gta_sa.exe
+gta-sa.exe
+gta_sa_compact.exe
+gta3.exe
+gta-vc.exe
+gta_vc.exe
+testapp.exe
+*.adf
+*.mp3
+*.wav
