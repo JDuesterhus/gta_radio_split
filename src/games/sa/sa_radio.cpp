@@ -779,11 +779,15 @@ unsigned __stdcall Watch(void* param) {
         // Turning the radio off restores volume only after that buffer has stopped,
         // otherwise the last bit of music comes out of the game.
         const bool hold = ShouldHoldGameMute(settings.muteInGame, playerAlive, vehicle, stays, everHeard);
+        // A kept station is audible in the game. Do not hold the old music
+        // mute when the player switches from a split station to WCTR or User
+        // Tracks. Radio Off is different: its buffer still has to stop.
+        const bool staysAudible = stays && station != kStationOff && station >= 0;
         DWORD dsStatus = 0;
         const bool bufferPlaying = g_hookedBuffer != nullptr &&
             SUCCEEDED(g_hookedBuffer->GetStatus(&dsStatus)) && (dsStatus & DSBSTATUS_PLAYING) != 0;
         bool mute = ShouldKeepGameSilent(hold, g_mute.load(std::memory_order_relaxed), radioStatus, bufferPlaying,
-            playerAlive);
+            playerAlive, staysAudible);
         if (mute && !hold && radioStatus == kRadioStopped) {
             if (++stoppedWhilePlayingTicks > 40) {
                 mute = false;

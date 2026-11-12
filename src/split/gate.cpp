@@ -28,8 +28,8 @@ bool ShouldHoldGameMute(bool muteInGame, bool playerAlive, bool vehicleRadioActi
 }
 
 bool ShouldKeepGameSilent(bool holdMute, bool alreadyMuted, int radioStatus, bool bufferPlaying,
-    bool playerAlive) {
-    if (!playerAlive) {
+    bool playerAlive, bool stationStaysAudible) {
+    if (!playerAlive || stationStaysAudible) {
         return false;
     }
     if (holdMute) {

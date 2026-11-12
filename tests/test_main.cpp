@@ -47,6 +47,7 @@ void TestGate() {
     Expect(!ShouldKeepGameSilent(false, true, kRadioStopped, false), "a stopped buffer releases the game");
     Expect(!ShouldKeepGameSilent(false, false, kRadioPlaying, true), "an already open buffer is left alone");
     Expect(!ShouldKeepGameSilent(false, true, kRadioPlaying, true, false), "a dead side player releases the game");
+    Expect(!ShouldKeepGameSilent(false, true, kRadioPlaying, true, true, true), "a kept station releases the game");
     Expect(StationStaysInGame(kStationUserTracks, true, false), "custom radio option");
     Expect(!StationStaysInGame(kStationUserTracks, false, true), "custom radio still splits");
     Expect(StationStaysInGame(kStationWctr, false, true), "talk radio option");
