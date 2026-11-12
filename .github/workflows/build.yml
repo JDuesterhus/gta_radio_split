@@ -39,11 +39,7 @@ jobs:
         with:
           name: RadioSplit-windows-x86
           if-no-files-found: error
-          path: |
-            RadioSplit.asi
-            RadioSplit.exe
-            RadioSplit.ini
-            RadioSplit.zip
+          path: RadioSplit.zip
 
       - name: Create release
         if: startsWith(github.ref, 'refs/tags/v')
@@ -66,8 +62,4 @@ jobs:
             The zip contains the `.asi`, `.exe`, `.ini`, and the README. See the [README](https://github.com/JDuesterhus/gta_radio_split#readme) for supported versions, configuration, and troubleshooting.
 
             This build is for the classic 32-bit PC versions. No game files are included.
-          files: |
-            RadioSplit.asi
-            RadioSplit.exe
-            RadioSplit.ini
-            RadioSplit.zip
+          files: RadioSplit.zip
