@@ -1,15 +1,49 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-set "VCVARS=C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Auxiliary\Build\vcvarsall.bat"
-if not exist "%VCVARS%" (
-  echo vcvarsall.bat not found
+if not exist build mkdir build
+
+rem CI sets up the x86 compiler before this script. Local shells find the
+rem newest Visual Studio installation, or use VCVARS when it is set.
+where cl >nul 2>nul
+if not errorlevel 1 if /i "%VSCMD_ARG_TGT_ARCH%"=="x86" goto compile
+
+if defined VCVARS (
+  if not exist "%VCVARS%" (
+    echo VCVARS is set but does not exist: %VCVARS%
+    exit /b 1
+  )
+  call "%VCVARS%" x86
+  goto check_compiler
+)
+
+set "VSPATH="
+set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
+if exist "%VSWHERE%" (
+  for /f "usebackq delims=" %%i in (`"%VSWHERE%" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set "VSPATH=%%i"
+)
+if defined VSPATH if exist "%VSPATH%\VC\Auxiliary\Build\vcvarsall.bat" (
+  call "%VSPATH%\VC\Auxiliary\Build\vcvarsall.bat" x86
+  goto check_compiler
+)
+if exist "C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Auxiliary\Build\vcvarsall.bat" (
+  call "C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Auxiliary\Build\vcvarsall.bat" x86
+  goto check_compiler
+)
+
+echo vcvarsall.bat not found.
+echo Install Visual Studio Build Tools with the "Desktop development with C++" workload (x86).
+exit /b 1
+
+:check_compiler
+if errorlevel 1 exit /b 1
+where cl >nul 2>nul
+if errorlevel 1 (
+  echo cl.exe is not on PATH after vcvarsall.
   exit /b 1
 )
-if not exist build mkdir build
-call "%VCVARS%" x86
-if errorlevel 1 exit /b 1
 
+:compile
 cl /nologo /std:c++17 /MT /EHsc /W3 /Isrc /Fobuild/ /Febuild/gate_test.exe ^
   src\split\gate.cpp src\split\byte_ring.cpp src\games\sa\version.cpp ^
   src\games\miles\radio_file.cpp src\games\miles\detour.cpp ^
