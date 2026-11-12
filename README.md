@@ -21,7 +21,7 @@ RadioSplit takes **only the car radio** out of the game's audio and plays it fro
 |---|---|
 | **GTA III** | 1.0, 1.1, Steam |
 | **GTA Vice City** | 1.0, 1.1, Steam |
-| **GTA San Andreas** | 1.0 US (compact and hoodlum), 1.01, 2.0, 3.0, Steam `gta-sa.exe` |
+| **GTA San Andreas** | 1.0 US (compact and hoodlum), 1.01, 2.0, 3.0, Steam `gta_sa.exe` |
 
 The plugin scans the running game for the radio code instead of relying on one fixed address, so other re-releases and modded executables often work too. Packed executables are scanned after they unpack.
 
@@ -40,7 +40,7 @@ The mod handles the game side. For the OBS side — capturing the radio separate
 1. **Download** the latest release and extract it.
 2. Install **Ultimate ASI Loader** in the game folder if you don't already have it:  
    [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader)
-3. Copy these three files into the game folder — the folder with `gta3.exe`, `gta-vc.exe`, or `gta_sa.exe`:
+3. Copy these three files into the game folder — the folder with `gta3.exe`, `gta_vc.exe`, or `gta_sa.exe`:
    - `RadioSplit.asi`
    - `RadioSplit.exe`
    - `RadioSplit.ini`
