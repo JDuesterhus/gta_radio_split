@@ -46,8 +46,10 @@ void TestGate() {
     Expect(ShouldKeepGameSilent(false, true, kRadioStopped, true), "stopped status with a live buffer stays muted");
     Expect(!ShouldKeepGameSilent(false, true, kRadioStopped, false), "a stopped buffer releases the game");
     Expect(!ShouldKeepGameSilent(false, false, kRadioPlaying, true), "an already open buffer is left alone");
-    Expect(StationStaysInGame(kStationUserTracks, true, false), "user tracks option");
-    Expect(StationStaysInGame(kStationWctr, false, true), "wctr option");
+    Expect(StationStaysInGame(kStationUserTracks, true, false), "custom radio option");
+    Expect(!StationStaysInGame(kStationUserTracks, false, true), "custom radio still splits");
+    Expect(StationStaysInGame(kStationWctr, false, true), "talk radio option");
+    Expect(!StationStaysInGame(kStationWctr, true, false), "talk radio still splits");
     Expect(!StationStaysInGame(1, true, true), "a music station still splits");
     Expect(StationStaysInGame(kStationOff, false, false), "radio off stays with the game");
     Expect(!StationStaysInGame(-1, true, true), "an unknown station does not block the split");
@@ -118,6 +120,23 @@ void TestRadioFiles() {
     Expect(!IsRadioStreamFile("C:\\Games\\VC\\MP3\\AMB_CITY.mp3"), "VC ambience name stays");
     Expect(!IsRadioStreamFile("C:\\Games\\VC\\audio\\ASS_1.mp3"), "VC cutscene stays");
     Expect(!IsRadioStreamFile(nullptr), "null path stays");
+
+    Expect(ClassifyMilesStation("C:\\Games\\GTA3\\audio\\Chat.WAV") == MilesStation::Talk, "chatterbox is talk");
+    Expect(ClassifyMilesStation("AUDIO\\KCHAT.mp3") == MilesStation::Talk, "k-chat is talk");
+    Expect(ClassifyMilesStation("AUDIO\\VCPR.mp3") == MilesStation::Talk, "vcpr is talk");
+    Expect(ClassifyMilesStation("AUDIO\\ESPANT.mp3") == MilesStation::Music, "espant is music");
+    Expect(ClassifyMilesStation("C:\\Games\\GTA3\\audio\\HEAD.wav") == MilesStation::Music, "head is music");
+    Expect(ClassifyMilesStation("C:\\Games\\VC\\MP3\\Wild.mp3") == MilesStation::Music, "named station in the mp3 folder stays music");
+    Expect(ClassifyMilesStation("C:\\Games\\VC\\mp3\\my song.mp3") == MilesStation::Custom, "vc mp3 player file is custom");
+    Expect(ClassifyMilesStation("C:\\Games\\GTA3\\MP3\\my song.mp3") == MilesStation::Custom, "iii mp3 player file is custom");
+    Expect(ClassifyMilesStation("C:\\Games\\VC\\audio\\ASS_1.mp3") == MilesStation::None, "cutscene is not a station");
+
+    Expect(!CaptureMilesStation(MilesStation::Talk, true, false), "TalkRadio=1 stays in the game");
+    Expect(CaptureMilesStation(MilesStation::Talk, false, false), "TalkRadio=0 goes to RadioSplit");
+    Expect(CaptureMilesStation(MilesStation::Custom, true, false), "CustomRadio=0 goes to RadioSplit");
+    Expect(!CaptureMilesStation(MilesStation::Custom, false, true), "CustomRadio=1 stays in the game");
+    Expect(CaptureMilesStation(MilesStation::Music, true, true), "music always splits");
+    Expect(!CaptureMilesStation(MilesStation::None, false, false), "other audio stays");
 }
 
 void TestStealLength() {

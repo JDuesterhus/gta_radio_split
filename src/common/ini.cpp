@@ -58,10 +58,10 @@ bool LoadSettings(const wchar_t* path, Settings& settings) {
             settings.muteInGame = ParseBool(value, settings.muteInGame);
         } else if (key == "OutputDevice") {
             settings.outputDevice = value;
-        } else if (key == "UserTracksInGame") {
-            settings.keepUserTracks = ParseBool(value, settings.keepUserTracks);
-        } else if (key == "WctrInGame") {
-            settings.keepWctr = ParseBool(value, settings.keepWctr);
+        } else if (key == "CustomRadio" || key == "UserTracksInGame") {
+            settings.keepCustomRadio = ParseBool(value, settings.keepCustomRadio);
+        } else if (key == "TalkRadio" || key == "WctrInGame") {
+            settings.keepTalkRadio = ParseBool(value, settings.keepTalkRadio);
         }
     }
     return true;
@@ -75,13 +75,15 @@ bool WriteDefaultSettings(const wchar_t* path) {
     file << "; RadioSplit\r\n"
             "; OutputDevice is a playback device name, or a unique piece of one.\r\n"
             "; Names are listed in RadioSplit.log. Leave this empty to use the Windows default playback device.\r\n"
-            "; UserTracksInGame=1 leaves the custom-file station on the game speakers.\r\n"
-            "; WctrInGame=1 leaves West Coast Talk Radio on the game speakers.\r\n"
+            "; CustomRadio=1 leaves the custom-file station on the game speakers.\r\n"
+            "; That is User Tracks in San Andreas, and the MP3 player in III and Vice City.\r\n"
+            "; TalkRadio=1 leaves the talk stations on the game speakers.\r\n"
+            "; That is WCTR, Chatterbox FM, K-Chat, and VCPR.\r\n"
             "Enable=1\r\n"
             "MuteInGame=1\r\n"
             "OutputDevice=\r\n"
-            "UserTracksInGame=0\r\n"
-            "WctrInGame=1\r\n";
+            "CustomRadio=0\r\n"
+            "TalkRadio=1\r\n";
     return static_cast<bool>(file);
 }
 

@@ -12,17 +12,24 @@ This repository is the plugin source. It does not contain GTA executables, radio
 4. Start the game once. `RadioSplit.log` lists playback devices.
 5. An empty `OutputDevice` opens the Windows default playback device. The log names that device after it opens. Set `OutputDevice` to force one from the list.
 
-`MuteInGame=0` also leaves the station in the game mix. `UserTracksInGame=1` leaves the San Andreas custom-file player on the game speakers. `WctrInGame=1` does the same for West Coast Talk Radio. User tracks default to off. WCTR stays in the game unless you set `WctrInGame=0`.
+`MuteInGame=0` also leaves the station in the game mix. `CustomRadio=1` leaves the custom station on the game speakers: User Tracks in San Andreas, and the MP3 player in III and Vice City. `TalkRadio=1` does the same for the talk stations: WCTR, Chatterbox FM, K-Chat, and VCPR. Custom stations go to RadioSplit unless you set `CustomRadio=1`. Talk stations stay in the game unless you set `TalkRadio=0`. Older ini files can still say `UserTracksInGame` and `WctrInGame`. If both the old and new name are present, the later line wins.
 
 ## What to listen for
 
 - In a car, the volume mixer shows `RadioSplit.exe`, and the station comes from that entry.
 - A gunshot, a voice line, and a cutscene stay on the game device.
 - Radio off, and on foot, the side device stays silent.
-- The menu music slider and pause affect the side output.
+- The menu music slider affects the side output.
+- Pausing the game stops `RadioSplit.exe`. III and Vice City had already queued the next Miles buffer; that audio is dropped instead of playing out.
 - Removing the ASI restores the stock mix.
 
 The station can sit a few tens of milliseconds off the engine noise. Retune static can remain on the game speakers.
+
+## Volume mixer and OBS
+
+Windows names a playback session after the process that opened it, so the radio has to play from `RadioSplit.exe`. A stream opened inside the ASI would show up as the game.
+
+OBS Application Audio Capture follows child processes, and it only lists a process that has a top-level window. The player is started with Explorer as its parent, so capturing the game does not include the radio. `RadioSplit.exe` keeps a 1×1 off-screen window, with no taskbar button, so OBS can select it on its own.
 
 ## Supported games
 

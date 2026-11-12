@@ -6,14 +6,14 @@ bool ShouldSplitRadio(int radioStatus, bool vehicleRadioActive) {
     return vehicleRadioActive && radioStatus == kRadioPlaying;
 }
 
-bool StationStaysInGame(int station, bool keepUserTracks, bool keepWctr) {
+bool StationStaysInGame(int station, bool keepCustomRadio, bool keepTalkRadio) {
     if (station == kStationOff) {
         return true;
     }
-    if (station == kStationUserTracks && keepUserTracks) {
+    if (station == kStationUserTracks && keepCustomRadio) {
         return true;
     }
-    if (station == kStationWctr && keepWctr) {
+    if (station == kStationWctr && keepTalkRadio) {
         return true;
     }
     return false;

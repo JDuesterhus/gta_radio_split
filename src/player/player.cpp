@@ -132,9 +132,53 @@ void MappingName(wchar_t* dst, std::size_t cap) {
     dst[i] = L'\0';
 }
 
+constexpr wchar_t kStatusClass[] = L"RadioSplitStatus";
+
+LRESULT CALLBACK StatusWindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam) {
+    return DefWindowProcW(window, message, wParam, lParam);
+}
+
+void PumpMessages() {
+    MSG message;
+    while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE) != 0) {
+        TranslateMessage(&message);
+        DispatchMessageW(&message);
+    }
+}
+
+// OBS finds an application through a top-level window and then captures that
+// window's process. Keep a small visible window so Application Audio Capture
+// can list RadioSplit.exe. The owner is hidden, and the window itself is 1x1,
+// off-screen and fully transparent, so it has no taskbar entry and no visible
+// pixels. It must stay WS_VISIBLE: OBS ignores hidden windows.
+HWND CreateStatusWindow(HINSTANCE instance) {
+    WNDCLASSEXW windowClass{};
+    windowClass.cbSize = sizeof windowClass;
+    windowClass.lpfnWndProc = StatusWindowProc;
+    windowClass.hInstance = instance;
+    windowClass.lpszClassName = kStatusClass;
+    if (RegisterClassExW(&windowClass) == 0 && GetLastError() != ERROR_CLASS_ALREADY_EXISTS) {
+        return nullptr;
+    }
+    HWND owner = CreateWindowExW(0, L"STATIC", L"", WS_POPUP, 0, 0, 0, 0, nullptr, nullptr, instance, nullptr);
+    HWND window = CreateWindowExW(
+        WS_EX_NOACTIVATE | WS_EX_LAYERED | WS_EX_TRANSPARENT,
+        kStatusClass, L"RadioSplit",
+        WS_POPUP | WS_VISIBLE,
+        -32000, -32000, 1, 1,
+        owner, nullptr, instance, nullptr);
+    if (window == nullptr) {
+        return nullptr;
+    }
+    SetLayeredWindowAttributes(window, 0, 0, LWA_ALPHA);
+    return window;
+}
+
 }  // namespace
 
-int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
+int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int) {
+    (void)CreateStatusWindow(instance);
+
     wchar_t mappingName[96] = L"Local\\RadioSplitAudio";
     MappingName(mappingName, 96);
 
@@ -142,6 +186,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     for (int attempt = 0; attempt < 200 && mapping == nullptr; ++attempt) {
         mapping = OpenFileMappingW(FILE_MAP_ALL_ACCESS, FALSE, mappingName);
         if (mapping == nullptr) {
+            PumpMessages();
             Sleep(10);
         }
     }
@@ -157,6 +202,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     }
 
     while (g_shm->sampleRate == 0 || g_shm->channels == 0) {
+        PumpMessages();
         if (GameGone()) {
             return 0;
         }
@@ -211,6 +257,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
     std::uint32_t rejectedRate = 0;
     for (;;) {
+        PumpMessages();
         g_shm->heartbeat = GetTickCount();
         if (GameGone()) {
             break;

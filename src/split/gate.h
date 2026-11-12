@@ -11,6 +11,7 @@ constexpr int kRadioStopping = 3;
 constexpr int kRadioStopped = 7;
 
 // San Andreas station ids. WCTR is the talk station. User Tracks is the custom-file station.
+// TalkRadio and CustomRadio are the ini names for these two groups.
 constexpr int kStationWctr = 11;
 constexpr int kStationUserTracks = 12;
 constexpr int kStationOff = 13;
@@ -20,7 +21,7 @@ constexpr int kStationOff = 13;
 bool ShouldSplitRadio(int radioStatus, bool vehicleRadioActive);
 
 // A kept station, and the radio-off position, stay on the game speakers.
-bool StationStaysInGame(int station, bool keepUserTracks, bool keepWctr);
+bool StationStaysInGame(int station, bool keepCustomRadio, bool keepTalkRadio);
 
 // Copy audio only while that station is actually playing.
 bool ShouldFeedRadio(int radioStatus, bool vehicleRadioActive, bool staysInGame);

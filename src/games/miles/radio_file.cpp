@@ -22,9 +22,18 @@ void LowerInPlace(char* text) {
 
 }  // namespace
 
-bool IsRadioStreamFile(const char* path) {
+bool Listed(const char* stem, const char* const* names) {
+    for (const char* const* name = names; *name != nullptr; ++name) {
+        if (Equals(stem, *name)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+MilesStation ClassifyMilesStation(const char* path) {
     if (path == nullptr || path[0] == '\0') {
-        return false;
+        return MilesStation::None;
     }
 
     const char* file = path;
@@ -56,22 +65,45 @@ bool IsRadioStreamFile(const char* path) {
     LowerInPlace(folder);
 
     if (Contains(stem, "amb")) {
-        return false;
+        return MilesStation::None;
+    }
+
+    const char* talk[] = {"chat", "kchat", "vcpr", nullptr};
+    if (Listed(stem, talk)) {
+        return MilesStation::Talk;
     }
 
     // III station wavs, plus the Vice City station names Miles opens.
-    const char* stations[] = {
-        "head", "class", "kjah", "rise", "lips", "game", "msx", "flash", "chat", "police",
-        "wild", "kchat", "fever", "vrock", "vcpr", "espant", "emotion", "wave", "taxi",
+    const char* music[] = {
+        "head", "class", "kjah", "rise", "lips", "game", "msx", "flash", "police",
+        "wild", "fever", "vrock", "espant", "emotion", "wave", "taxi", nullptr,
     };
-    for (const char* station : stations) {
-        if (Equals(stem, station)) {
-            return true;
-        }
+    if (Listed(stem, music)) {
+        return MilesStation::Music;
     }
 
-    // Vice City keeps the radio directory separate from cutscene audio.
-    return Equals(folder, "mp3");
+    // The MP3 player in III and Vice City opens songs from this folder.
+    if (Equals(folder, "mp3")) {
+        return MilesStation::Custom;
+    }
+    return MilesStation::None;
+}
+
+bool CaptureMilesStation(MilesStation station, bool keepTalkRadio, bool keepCustomRadio) {
+    if (station == MilesStation::Music) {
+        return true;
+    }
+    if (station == MilesStation::Talk) {
+        return !keepTalkRadio;
+    }
+    if (station == MilesStation::Custom) {
+        return !keepCustomRadio;
+    }
+    return false;
+}
+
+bool IsRadioStreamFile(const char* path) {
+    return ClassifyMilesStation(path) != MilesStation::None;
 }
 
 }  // namespace radiosplit

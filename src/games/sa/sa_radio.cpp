@@ -17,6 +17,8 @@
 
 #include <process.h>
 
+#include "common/player_process.h"
+
 #include <atomic>
 #include <cstdint>
 #include <cstring>
@@ -187,18 +189,14 @@ bool StartPlayer() {
     }
     wsprintfW(command, L"\"%s\" %s", exePath, g_mappingName);
 
-    STARTUPINFOW startup{};
-    startup.cb = sizeof startup;
-    PROCESS_INFORMATION process{};
-    if (CreateProcessW(exePath, command, nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &startup, &process) == 0) {
+    bool detached = false;
+    if (!SpawnDetachedPlayer(exePath, command, detached)) {
         Log("RadioSplit.exe failed to start (%lu)", GetLastError());
         return false;
     }
-    CloseHandle(process.hThread);
-    CloseHandle(process.hProcess);
     char narrow[MAX_PATH * 3] = {};
     WideCharToMultiByte(CP_UTF8, 0, exePath, -1, narrow, static_cast<int>(sizeof narrow), nullptr, nullptr);
-    Log("Started %s", narrow);
+    Log("Started %s (%s)", narrow, detached ? "outside the game process tree" : "as a child of the game");
     return true;
 }
 
@@ -618,6 +616,8 @@ unsigned __stdcall Watch(void* param) {
     const Settings settings = *static_cast<Settings*>(param);
     delete static_cast<Settings*>(param);
 
+    Log("CustomRadio=%d TalkRadio=%d", settings.keepCustomRadio ? 1 : 0, settings.keepTalkRadio ? 1 : 0);
+
     if (!settings.enable) {
         Log("Enable=0, stock mix left unchanged");
         return 0;
@@ -740,7 +740,7 @@ unsigned __stdcall Watch(void* param) {
         const int radioStatus = RadioStatus();
         const bool vehicle = VehicleRadioActive();
         const int station = CurrentStation();
-        const bool stays = StationStaysInGame(station, settings.keepUserTracks, settings.keepWctr);
+        const bool stays = StationStaysInGame(station, settings.keepCustomRadio, settings.keepTalkRadio);
         const bool split = ShouldFeedRadio(radioStatus, vehicle, stays);
         g_split.store(split, std::memory_order_release);
         if (split) {

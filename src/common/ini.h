@@ -7,8 +7,8 @@ namespace radiosplit {
 struct Settings {
     bool enable = true;
     bool muteInGame = true;
-    bool keepUserTracks = false;
-    bool keepWctr = true;
+    bool keepCustomRadio = false;
+    bool keepTalkRadio = true;
     std::string outputDevice;
 };
 

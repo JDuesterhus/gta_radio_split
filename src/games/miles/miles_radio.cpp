@@ -24,6 +24,8 @@
 
 #include <process.h>
 
+#include "common/player_process.h"
+
 #include <atomic>
 #include <cstdint>
 #include <cstring>
@@ -41,6 +43,7 @@ using CloseStreamFn = void(__stdcall*)(void* stream);
 using StreamSampleFn = void*(__stdcall*)(void* stream);
 using LoadBufferFn = void(__stdcall*)(void* sample, unsigned bufferNumber, const void* data, unsigned length);
 using SetVolumeFn = void(__stdcall*)(void* stream, int volume);
+using PauseStreamFn = void(__stdcall*)(void* stream, int paused);
 using PlaybackRateFn = int(__stdcall*)(void* sample);
 using StreamInfoFn = void(__stdcall*)(void* stream, int* datarate, int* sndtype, int* length, int* memory);
 
@@ -69,6 +72,7 @@ CloseStreamFn g_closeStream = nullptr;
 StreamSampleFn g_streamSample = nullptr;
 LoadBufferFn g_loadBuffer = nullptr;
 SetVolumeFn g_setStreamVolume = nullptr;
+PauseStreamFn g_pauseStream = nullptr;
 PlaybackRateFn g_playbackRate = nullptr;
 PlaybackRateFn g_streamPlaybackRate = nullptr;
 StreamInfoFn g_streamInfo = nullptr;
@@ -87,6 +91,9 @@ std::atomic<unsigned> g_matchedLoads{0};
 std::atomic<unsigned> g_copiedBytes{0};
 int g_sampleOffset = -1;
 bool g_muteInGame = true;
+bool g_keepTalkRadio = true;
+bool g_keepCustomRadio = false;
+std::atomic<bool> g_dropRadio{false};
 bool g_loggedFormat = false;
 bool g_loggedOffset = false;
 int g_decodeFailures = 0;
@@ -240,12 +247,38 @@ void RememberStream(void* stream, bool radio, const char* filename) {
     slot->described = false;
     slot->sndtype = -1;
     slot->mp3Mode = 0;
+    if (radio) {
+        g_dropRadio.store(false, std::memory_order_release);
+    }
+}
+
+bool OtherRadioOpen(void* except) {
+    for (const TrackedStream& entry : g_streams) {
+        if (entry.stream != nullptr && entry.stream != except && entry.radio) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Miles submits the next buffer before that audio is heard. Pause closes the
+// stream, and the ring would otherwise keep playing that buffer. San Andreas
+// never queues ahead of the play cursor, so the same pause is silent there.
+void DropQueuedRadio() {
+    g_dropRadio.store(true, std::memory_order_release);
+    if (g_shm != nullptr) {
+        g_shm->readPos = g_shm->writePos;
+    }
 }
 
 void ForgetStream(void* stream) {
     if (TrackedStream* entry = FindStream(stream)) {
+        const bool radio = entry->radio;
         ReleaseDecoder(*entry);
         *entry = {};
+        if (radio && !OtherRadioOpen(nullptr)) {
+            DropQueuedRadio();
+        }
     }
 }
 
@@ -433,21 +466,25 @@ void* __stdcall OpenStreamHook(void* dig, const char* filename, int memory) {
     if (stream != nullptr) {
         // Filename only. IiiRadioIsOn() is true for every stream opened while the
         // radio is up, which pulled speech (lib_a.wav and the rest) into the station.
-        const bool radio = IsRadioStreamFile(filename);
+        const MilesStation kind = ClassifyMilesStation(filename);
+        const bool radio = CaptureMilesStation(kind, g_keepTalkRadio, g_keepCustomRadio);
         RememberStream(stream, radio, filename);
         g_openCount.fetch_add(1, std::memory_order_relaxed);
+        const char* name = filename != nullptr ? filename : "(no name)";
         if (radio) {
             g_radioOpenCount.fetch_add(1, std::memory_order_relaxed);
-            Log("Miles stream %p %s (radio)", stream, filename != nullptr ? filename : "(no name)");
+            Log("Miles stream %p %s (radio)", stream, name);
             if (g_iiiManager != 0 && Readable(reinterpret_cast<void*>(g_iiiManager), 0x10)) {
                 const auto* manager = reinterpret_cast<const unsigned char*>(g_iiiManager);
                 Log("III music manager init=%u mode=%u track=%u inCar=%u announcement=%u",
                     manager[0], manager[2], manager[3], manager[0xA], manager[0xB]);
             }
+        } else if (kind == MilesStation::Talk || kind == MilesStation::Custom) {
+            Log("Miles stream %s (left in game, %s)", name, kind == MilesStation::Talk ? "talk" : "custom");
         } else {
             const unsigned count = g_otherOpenCount.fetch_add(1, std::memory_order_relaxed) + 1;
             if (count <= 8 || count % 200 == 0) {
-                Log("Miles stream %s (left in game, %u so far)", filename != nullptr ? filename : "(no name)", count);
+                Log("Miles stream %s (left in game, %u so far)", name, count);
             }
         }
     }
@@ -457,6 +494,19 @@ void* __stdcall OpenStreamHook(void* dig, const char* filename, int memory) {
 void __stdcall CloseStreamHook(void* stream) {
     ForgetStream(stream);
     g_closeStream(stream);
+}
+
+void __stdcall PauseStreamHook(void* stream, int paused) {
+    if (TrackedStream* entry = FindStream(stream)) {
+        if (entry->radio) {
+            if (paused != 0) {
+                DropQueuedRadio();
+            } else {
+                g_dropRadio.store(false, std::memory_order_release);
+            }
+        }
+    }
+    g_pauseStream(stream, paused);
 }
 
 void __stdcall SetStreamVolumeHook(void* stream, int volume) {
@@ -582,8 +632,12 @@ void __stdcall LoadBufferHook(void* sample, unsigned bufferNumber, const void* d
             const float gain = static_cast<float>(entry->volume) / 127.0f;
             std::memcpy(&g_shm->gainBits, &gain, sizeof gain);
             const auto pcmBytes = static_cast<std::uint32_t>(pcm.size() * sizeof(std::int16_t));
-            RadioShmWrite(g_shm, pcm.data(), pcmBytes);
-            g_copiedBytes.fetch_add(pcmBytes, std::memory_order_relaxed);
+            if (g_dropRadio.load(std::memory_order_acquire)) {
+                g_shm->readPos = g_shm->writePos;
+            } else {
+                RadioShmWrite(g_shm, pcm.data(), pcmBytes);
+                g_copiedBytes.fetch_add(pcmBytes, std::memory_order_relaxed);
+            }
             g_matchedLoads.fetch_add(1, std::memory_order_relaxed);
             g_captured.store(true, std::memory_order_relaxed);
             if (!g_loggedFormat) {
@@ -660,18 +714,14 @@ bool StartPlayer() {
         return false;
     }
     wsprintfW(command, L"\"%s\" %s", exePath, g_mappingName);
-    STARTUPINFOW startup{};
-    startup.cb = sizeof startup;
-    PROCESS_INFORMATION process{};
-    if (CreateProcessW(exePath, command, nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &startup, &process) == 0) {
+    bool detached = false;
+    if (!SpawnDetachedPlayer(exePath, command, detached)) {
         Log("RadioSplit.exe failed to start (%lu)", GetLastError());
         return false;
     }
-    CloseHandle(process.hThread);
-    CloseHandle(process.hProcess);
     char narrow[MAX_PATH * 3] = {};
     WideCharToMultiByte(CP_UTF8, 0, exePath, -1, narrow, static_cast<int>(sizeof narrow), nullptr, nullptr);
-    Log("Started %s", narrow);
+    Log("Started %s (%s)", narrow, detached ? "outside the game process tree" : "as a child of the game");
     return true;
 }
 
@@ -700,6 +750,9 @@ unsigned __stdcall Watch(void* param) {
     const Settings settings = *static_cast<Settings*>(param);
     delete static_cast<Settings*>(param);
     g_muteInGame = settings.muteInGame;
+    g_keepTalkRadio = settings.keepTalkRadio;
+    g_keepCustomRadio = settings.keepCustomRadio;
+    Log("CustomRadio=%d TalkRadio=%d", g_keepCustomRadio ? 1 : 0, g_keepTalkRadio ? 1 : 0);
 
     if (!settings.enable) {
         Log("Enable=0, stock mix left unchanged");
@@ -778,6 +831,13 @@ unsigned __stdcall Watch(void* param) {
                 &original)) {
             g_setStreamVolume = reinterpret_cast<SetVolumeFn>(original);
         }
+    }
+    if (Export(miles, "_AIL_pause_stream@8", "AIL_pause_stream") != nullptr) {
+        // The detour stores the trampoline before the patch is live.
+        HookExport(miles, "_AIL_pause_stream@8", "AIL_pause_stream", reinterpret_cast<void*>(&PauseStreamHook),
+            reinterpret_cast<void**>(&g_pauseStream));
+    } else {
+        Log("Miles has no AIL_pause_stream. Queued radio is dropped when the stream closes");
     }
 
     Log("Miles radio tap installed");
