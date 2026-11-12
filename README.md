@@ -8,7 +8,7 @@ RadioSplit takes **only the car radio** out of the game's audio and plays it fro
 
 ## What it does
 
-- **Only the radio is split.** Everything else stays in the game's normal mix.
+- **Only the radio is split.** Everything else stays in the game's normal mix. Police and taxi radio are left in the game; they are not music stations.
 - **Works with the classic 32-bit PC versions** of GTA III, Vice City, and San Andreas. Most known versions are covered; if yours isn't, please report it.
 - **The radio in the main menu works too**, and the game's radio/music volume slider still controls the radio volume.
 - **Talk radio can stay in the game** — on by default. WCTR, Chatterbox FM, K-Chat, and VCPR.

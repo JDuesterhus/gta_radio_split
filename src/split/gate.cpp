@@ -27,7 +27,11 @@ bool ShouldHoldGameMute(bool muteInGame, bool playerAlive, bool vehicleRadioActi
     return muteInGame && playerAlive && vehicleRadioActive && !staysInGame && everHeard;
 }
 
-bool ShouldKeepGameSilent(bool holdMute, bool alreadyMuted, int radioStatus, bool bufferPlaying) {
+bool ShouldKeepGameSilent(bool holdMute, bool alreadyMuted, int radioStatus, bool bufferPlaying,
+    bool playerAlive) {
+    if (!playerAlive) {
+        return false;
+    }
     if (holdMute) {
         return true;
     }

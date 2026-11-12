@@ -717,6 +717,21 @@ unsigned __stdcall Watch(void* param) {
             } else {
                 g_hookedBuffer = buffer;
             }
+            // The game often sets the buffer volume before the detour is
+            // installed. Read it once so RestoreGameVolume has a value to
+            // restore, even if the game never calls SetVolume again. Later
+            // buffers reuse the last volume captured by SetVolumeHook.
+            if (!g_seenVolume.load(std::memory_order_relaxed)) {
+                LONG initialVolume = 0;
+                if (SUCCEEDED(buffer->GetVolume(&initialVolume))) {
+                    g_gameVolume.store(initialVolume, std::memory_order_relaxed);
+                    g_seenVolume.store(true, std::memory_order_relaxed);
+                } else {
+                    Log("Radio buffer volume unreadable; assuming full scale");
+                    g_gameVolume.store(0, std::memory_order_relaxed);
+                    g_seenVolume.store(true, std::memory_order_relaxed);
+                }
+            }
             g_blockAlign = format.blockAlign;
             g_shm->channels = static_cast<std::uint32_t>(format.channels);
             MemoryBarrier();
@@ -767,7 +782,8 @@ unsigned __stdcall Watch(void* param) {
         DWORD dsStatus = 0;
         const bool bufferPlaying = g_hookedBuffer != nullptr &&
             SUCCEEDED(g_hookedBuffer->GetStatus(&dsStatus)) && (dsStatus & DSBSTATUS_PLAYING) != 0;
-        bool mute = ShouldKeepGameSilent(hold, g_mute.load(std::memory_order_relaxed), radioStatus, bufferPlaying);
+        bool mute = ShouldKeepGameSilent(hold, g_mute.load(std::memory_order_relaxed), radioStatus, bufferPlaying,
+            playerAlive);
         if (mute && !hold && radioStatus == kRadioStopped) {
             if (++stoppedWhilePlayingTicks > 40) {
                 mute = false;

@@ -74,9 +74,11 @@ MilesStation ClassifyMilesStation(const char* path) {
     }
 
     // III station wavs, plus the Vice City station names Miles opens.
+    // Police and taxi radio are left in the game: they are speech/effects
+    // streams, and decoding them as music produced crackle in III.
     const char* music[] = {
-        "head", "class", "kjah", "rise", "lips", "game", "msx", "flash", "police",
-        "wild", "fever", "vrock", "espant", "emotion", "wave", "taxi", nullptr,
+        "head", "class", "kjah", "rise", "lips", "game", "msx", "flash",
+        "wild", "fever", "vrock", "espant", "emotion", "wave", nullptr,
     };
     if (Listed(stem, music)) {
         return MilesStation::Music;

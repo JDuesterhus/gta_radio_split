@@ -33,8 +33,10 @@ bool ShouldHoldGameMute(bool muteInGame, bool playerAlive, bool vehicleRadioActi
 
 // Releasing the mute while the old song is still in the buffer plays a sliver
 // of it from the game. Hold the silence until the radio status is stopped and
-// the streaming buffer itself has stopped.
-bool ShouldKeepGameSilent(bool holdMute, bool alreadyMuted, int radioStatus, bool bufferPlaying);
+// the streaming buffer itself has stopped. A dead side player must release the
+// game immediately so the stock radio is audible again.
+bool ShouldKeepGameSilent(bool holdMute, bool alreadyMuted, int radioStatus, bool bufferPlaying,
+    bool playerAlive = true);
 
 // The game buffer stays audible unless the side device is actually running.
 bool AllowMute(bool muteInGame, bool deviceRunning, bool split);
