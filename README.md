@@ -15,8 +15,6 @@ RadioSplit takes **only the car radio** out of the game's audio and plays it fro
 - **Custom radio can stay in the game** — San Andreas User Tracks and the III/VC MP3 player.
 - **Useful for clean Twitch VODs and YouTube recordings.** Keep the radio out of what you send to the platform, but still hear it yourself. The OBS side is shown in [this video](https://www.youtube.com/watch?v=kAKzH7jpM_U); this README covers the game side.
 
-> RadioSplit controls what is in your audio mix. It is not legal advice, and platform copyright rules still apply.
-
 ## Supported games
 
 | Game | Known working versions |
@@ -50,7 +48,7 @@ The mod handles the game side. For the OBS side — capturing the radio separate
 5. Optional: set `OutputDevice` in `RadioSplit.ini` if you want the radio on a specific output. Leave it empty for the Windows default.
 6. On the OBS side, follow the video above.
 
-`RadioSplit.exe` must keep its name and sit next to the game executable. The ASI can also live in `scripts`; the `.ini` and `.log` stay next to the ASI. The helper starts with the game and exits with it — you don't launch it yourself.
+`RadioSplit.exe` must keep its name and sit next to the game executable. The ASI can also live in `scripts`; the `.ini` and `.log` are created next to the ASI. Even then, `RadioSplit.exe` must stay next to the game executable. The helper starts with the game and exits with it — you don't launch it yourself.
 
 The release zip contains `RadioSplit.asi`, `RadioSplit.exe`, `RadioSplit.ini`, and this README.
 
@@ -61,10 +59,8 @@ Delete `RadioSplit.asi`, `RadioSplit.exe`, `RadioSplit.ini`, and `RadioSplit.log
 ## Use
 
 - Start the game and turn on a radio station. The station now comes from `RadioSplit.exe`; the game's own radio is muted by default.
-- The Windows volume mixer shows `RadioSplit.exe` separately. Use that slider to control the radio volume.
-- The in-game/menu radio volume slider also works.
+- Use the in-game/menu radio volume slider as usual.
 - Radio off or on foot: the radio source goes silent.
-- Pause the game: the radio stops. III and Vice City had already queued the next Miles buffer; that audio is dropped.
 - The radio can be slightly behind the engine sound. Retune static can remain in the game mix.
 - If the mod cannot decode a station or the player fails, the game radio stays audible as a fallback. `RadioSplit.log` says why.
 
@@ -102,7 +98,7 @@ Other common fixes:
 - **The radio still comes from the game:** check `Enable=1` and `MuteInGame=1`. If the ASI was not loaded, there is no log or no `RadioSplit.exe`.
 - **Talk or custom radio is still in the game:** that is intentional with `TalkRadio=1` / `CustomRadio=1`. Set them to `0` to send those stations to the helper.
 - **No radio sound at all:** clear `OutputDevice` to use the Windows default, then check the log for the opened device name.
-- **OBS does not list `RadioSplit.exe`:** make sure the game is running, the new `RadioSplit.exe` is in the game folder, and you reopen the OBS source properties. OBS 28+ on Windows 10 2004+ or Windows 11 is required.
+- **The ASI is in `scripts`:** look for `RadioSplit.log` and `RadioSplit.ini` there, not in the game root. `RadioSplit.exe` still has to sit next to the game executable.
 - **A version is not recognized:** report the game, exe version, and log. Please don't attach game files.
 
 ## How it works
@@ -144,6 +140,8 @@ III and Vice City use Miles (`mss32.dll`). The ASI:
 
 The game still has to play its compressed buffer, or Miles would stall; the plugin keeps that buffer intact and only silences the volume.
 
+Pausing III and Vice City drops the already-queued Miles buffer instead of playing it after the pause. San Andreas reads from the play cursor and never queues ahead, so the same pause is silent there.
+
 ### The shared ring and the player
 
 - One shared-memory ring per game process: `Local\RadioSplitAudio-<pid>`.
@@ -180,23 +178,8 @@ build.bat
 
 The binaries are statically linked; no Visual C++ redistributable is needed.
 
-### Releases
-
-GitHub Actions builds main, pull requests, and tags. Pushing a tag such as `v1.0.0` builds the files and publishes a GitHub release with the `.asi`, `.exe`, `.ini`, and a zip:
-
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-The workflow is in `.github/workflows/build.yml`.
-
 ## Credits
 
 - [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader) by ThirteenAG.
 - [miniaudio](https://github.com/mackron/miniaudio) by David Reid, including dr_mp3.
 - GTA III, Vice City, and San Andreas are property of Rockstar Games. This project includes no game files.
-
----
-
-Not affiliated with Rockstar Games or Take-Two Interactive. Use at your own risk.
